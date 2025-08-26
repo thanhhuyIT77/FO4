@@ -110,6 +110,20 @@
                     <h3>Lịch sử gần đây</h3>
                     <div id="history"></div>
                 </div>
+                <div style="grid-column: 1 / -1; margin-top:6px;">
+                    <h3>Bảng tổng</h3>
+                    <div id="standings">
+                        <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; padding:6px 0;">
+                            <div><b>a CHề</b></div>
+                            <div>Thắng: <span id="winA">0</span></div>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; padding:6px 0;">
+                            <div style="text-align:right;"><b>Huy Messi</b></div>
+                            <div>Thắng: <span id="winB">0</span></div>
+                        </div>
+                        <div style="text-align:center; color: var(--muted);">Hòa: <span id="draws">0</span></div>
+                    </div>
+                </div>
             </div>
         </aside>
     </div>
@@ -177,8 +191,15 @@
                 home: { name: FIXED.homeName, logo: FIXED.homeLogo, score: item.home.score },
                 away: { name: FIXED.awayName, logo: FIXED.awayLogo, score: item.away.score }
             }));
+            // cập nhật bảng tổng (thắng/hòa)
+            const st = loadStandings();
+            if (item.home.score > item.away.score) st.winA++;
+            else if (item.home.score < item.away.score) st.winB++;
+            else st.draws++;
+            localStorage.setItem('solo-standings', JSON.stringify(st));
             toast('Đã lưu vào lịch sử');
             await listHistory();
+            renderStandings();
 
             // Optional: try save to backend API if reachable
             const apiBase = window.localStorage.getItem('solo-api-base') || '';
@@ -223,6 +244,21 @@
                 }));
                 syncPreview();
             }
+            renderStandings();
+        }
+        function loadStandings(){
+            const s = localStorage.getItem('solo-standings');
+            const defVal = { winA: 0, winB: 0, draws: 0 };
+            try { return Object.assign(defVal, JSON.parse(s||'{}')); } catch(e){ return defVal; }
+        }
+        function renderStandings(){
+            const s = loadStandings();
+            const wa = document.getElementById('winA');
+            const wb = document.getElementById('winB');
+            const dw = document.getElementById('draws');
+            if (wa) wa.textContent = s.winA;
+            if (wb) wb.textContent = s.winB;
+            if (dw) dw.textContent = s.draws;
         }
         function toast(msg){
             const el = document.createElement('div');
@@ -231,7 +267,14 @@
             el.style.padding = '10px 14px'; el.style.borderRadius = '10px'; el.style.background = '#06d6a0'; el.style.color = '#0b1320'; el.style.fontWeight = '700'; el.style.boxShadow = '0 10px 24px rgba(0,0,0,.25)';
             document.body.appendChild(el); setTimeout(()=>el.remove(),1600);
         }
-        document.addEventListener('DOMContentLoaded', ()=>{ ['homeScoreInput','awayScoreInput'].forEach(id=>document.getElementById(id).addEventListener('input', syncPreview)); loadScores(); listHistory(); });
+        document.addEventListener('DOMContentLoaded', ()=>{
+            ['homeScoreInput','awayScoreInput'].forEach(id=>document.getElementById(id).addEventListener('input', syncPreview));
+            loadScores();
+            listHistory();
+            renderStandings();
+            // Auto-refresh history and scoreboard so all viewers see the latest
+            setInterval(()=>{ listHistory(); }, 5000);
+        });
     </script>
 </body>
 </html>
